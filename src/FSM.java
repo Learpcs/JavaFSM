@@ -3,29 +3,27 @@ import java.io.FileReader;
 import java.util.*;
 
 public class FSM {
-    List<Map<Character, List<Integer>>> go;
-    boolean[] f;
+    List<Map<Character, Integer>> transitions;
+    boolean[] acceptingStates;
 
     FSM(String filename) throws FileNotFoundException {
         try (Scanner sc = new Scanner(new FileReader(filename))) {
             int n = sc.nextInt(), m = sc.nextInt();
-            assert(n > 0 && m >= 0);
-            go = new ArrayList<>();
+            if (n <= 0 || m < 0) {
+                throw new IllegalArgumentException("Number of states and transitions must be non-negative");
+            }
+            transitions = new ArrayList<>();
+            acceptingStates = new boolean[n];
             for (int i = 0; i < n; ++i) {
-                go.add(new HashMap<>());
+                transitions.add(new HashMap<>());
             }
             for (int i = 0; i < m; ++i) {
                 int from = sc.nextInt(), to = sc.nextInt();
                 char ch = sc.next(".").charAt(0);
-                go.get(from).putIfAbsent(ch, new ArrayList<>());
-                go.get(from).get(ch).add(to);
-            }
-            for (int i = 0; i < n; ++i) {
-                for (Map.Entry<Character, List<Integer>> lst : go.get(i).entrySet()) {
-                    if (lst.getValue().size() != 1) {
-                        throw new RuntimeException("File is not valid");
-                    }
+                if (transitions.get(from).containsKey(ch)) {
+                    throw new RuntimeException("File is not valid: multiple transitions for the same character");
                 }
+                transitions.get(from).put(ch, to);
             }
         }
     }
@@ -33,10 +31,24 @@ public class FSM {
     boolean check(String word) {
         int v = 0;
         for (int i = 0; i < word.length(); ++i) {
-            if (go.get(v).containsKey(word.charAt(i))) {
+            char ch = word.charAt(i);
+            if (!transitions.get(v).containsKey(ch)) {
                 return false;
             }
+            v = transitions.get(v).get(ch);
         }
-        return false;
+        return acceptingStates[v];
+    }
+
+    public static void main(String[] args) {
+        try {
+            FSM fsm = new FSM("fsm.txt");
+            System.out.println(fsm.check("ab")); // true
+            System.out.println(fsm.check("abc")); // false
+        } catch (FileNotFoundException e) {
+            System.err.println("File not found: " + e.getMessage());
+        } catch (RuntimeException e) {
+            System.err.println("Error: " + e.getMessage());
+        }
     }
 }
